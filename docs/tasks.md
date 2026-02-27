@@ -1,6 +1,6 @@
 # FloatSwitch タスク一覧
 
-最終更新: 2026-02-24
+最終更新: 2026-02-27
 
 ---
 
@@ -19,8 +19,8 @@
 - [x] GitHub リポジトリ作成（private）
 - [x] 設計仕様書作成（`docs/design.md`）
 - [x] タスク一覧作成（`docs/tasks.md`）
-- [ ] Xcode プロジェクト作成（SwiftUI / macOS App）
-- [ ] 基本ディレクトリ構成の整備
+- [x] Xcode プロジェクト作成（SwiftUI / macOS App）
+- [x] 基本ディレクトリ構成の整備
 
 ---
 

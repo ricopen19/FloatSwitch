@@ -1,0 +1,19 @@
+# Xcode - ユーザー固有の設定・状態ファイル
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.moved-aside
+
+# ビルド成果物
+DerivedData/
+build/
+*.ipa
+*.xcarchive
+
+# Swift Package Manager
+.build/
+.swiftpm/
+/Packages/
+
+# macOS
+.DS_Store
