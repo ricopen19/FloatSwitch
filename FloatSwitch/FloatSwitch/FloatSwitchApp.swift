@@ -9,9 +9,10 @@ import SwiftUI
 
 @main
 struct FloatSwitchApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
+        // フローティングパネルは AppDelegate で管理するため、通常のウィンドウは持たない
+        Settings { EmptyView() }
     }
 }
