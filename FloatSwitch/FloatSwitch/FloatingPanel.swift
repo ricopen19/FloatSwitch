@@ -10,7 +10,7 @@ import SwiftUI
 
 /// 常時最前面に表示するフローティングパネル
 final class FloatingPanel: NSPanel {
-    init() {
+    init(viewModel: AppViewModel) {
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 80),
             styleMask: [.nonactivatingPanel, .fullSizeContentView, .borderless],
@@ -30,7 +30,7 @@ final class FloatingPanel: NSPanel {
         isOpaque = false
         hasShadow = true
 
-        let contentView = FloatingBarView()
+        let contentView = FloatingBarView(viewModel: viewModel)
         self.contentView = NSHostingView(rootView: contentView)
 
         positionToBottomRight()
