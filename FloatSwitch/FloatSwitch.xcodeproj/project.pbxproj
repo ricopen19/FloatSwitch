@@ -28,10 +28,10 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		FACE0001CAFE0001FACE0001 /* ScriptingBridge.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ScriptingBridge.framework; path = System/Library/Frameworks/ScriptingBridge.framework; sourceTree = SDKROOT; };
 		9F06F10A2F5163E000A425A5 /* FloatSwitch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FloatSwitch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9F06F1172F5163E200A425A5 /* FloatSwitchTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FloatSwitchTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9F06F1212F5163E200A425A5 /* FloatSwitchUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FloatSwitchUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		FACE0001CAFE0001FACE0001 /* ScriptingBridge.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ScriptingBridge.framework; path = System/Library/Frameworks/ScriptingBridge.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -84,11 +84,13 @@
 				9F06F1392F51652200A425A5 /* Utilities */,
 				9F06F1382F51651A00A425A5 /* Services */,
 				9F06F1372F51651200A425A5 /* Models */,
-				9F06F1362F51650500A425A5 /* Views */,
+				9F06F1362F51650500A425A5,
 				9F06F10C2F5163E000A425A5 /* FloatSwitch */,
 				9F06F11A2F5163E200A425A5 /* FloatSwitchTests */,
 				9F06F1242F5163E200A425A5 /* FloatSwitchUITests */,
-				9F06F10B2F5163E000A425A5 /* Products */,			);
+				9F06F10B2F5163E000A425A5 /* Products */,
+				9F06F2142F52D0E500A425A5 /* Recovered References */,
+			);
 			sourceTree = "<group>";
 		};
 		9F06F10B2F5163E000A425A5 /* Products */ = {
@@ -101,7 +103,7 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		9F06F1362F51650500A425A5 /* Views */ = {
+		9F06F1362F51650500A425A5 = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -126,6 +128,14 @@
 			children = (
 			);
 			path = Utilities;
+			sourceTree = "<group>";
+		};
+		9F06F2142F52D0E500A425A5 /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				FACE0001CAFE0001FACE0001 /* ScriptingBridge.framework */,
+			);
+			name = "Recovered References";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -294,7 +304,8 @@
 		9F06F1062F5163E000A425A5 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (			);
+			files = (
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		9F06F1132F5163E200A425A5 /* Sources */ = {
@@ -457,7 +468,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "Finder \u3067\u958b\u3044\u3066\u3044\u308b\u30d5\u30a9\u30eb\u30c0\u306e\u4e00\u89a7\u3092\u53d6\u5f97\u3059\u308b\u305f\u3081\u306b\u4f7f\u7528\u3057\u307e\u3059\u3002";
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "Finder u3067u958bu3044u3066u3044u308bu30d5u30a9u30ebu30c0u306eu4e00u89a7u3092u53d6u5f97u3059u308bu305fu3081u306bu4f7fu7528u3057u307eu3059u3002";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -471,8 +482,8 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "FloatSwitch/FloatSwitch-Bridging-Header.h";
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -489,7 +500,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "Finder \u3067\u958b\u3044\u3066\u3044\u308b\u30d5\u30a9\u30eb\u30c0\u306e\u4e00\u89a7\u3092\u53d6\u5f97\u3059\u308b\u305f\u3081\u306b\u4f7f\u7528\u3057\u307e\u3059\u3002";
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "Finder u3067u958bu3044u3066u3044u308bu30d5u30a9u30ebu30c0u306eu4e00u89a7u3092u53d6u5f97u3059u308bu305fu3081u306bu4f7fu7528u3057u307eu3059u3002";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

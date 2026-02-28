@@ -7,29 +7,46 @@
 
 import SwiftUI
 
-/// フローティングバーのルートビュー（Phase 3: アプリ・フォルダ一覧表示）
+/// フローティングバーのルートビュー
+///
+/// - 上段: 起動中アプリ
+/// - 下段: Finder フォルダ（存在する場合のみ表示）
+/// - 弧状シェイプ + hover 半透明 + 右クリックでサイズ変更
 struct FloatingBarView: View {
     var viewModel: AppViewModel
+
     @State private var isHovered = false
 
+    private let arcDepth: CGFloat = 22
+
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 16)
+        ZStack(alignment: .top) {
+            // 弧状バックグラウンド
+            FloatingBarShape(cornerRadius: 14, arcDepth: arcDepth)
                 .fill(.regularMaterial)
 
-            HStack(spacing: 0) {
-                // 起動中アプリ
-                appRow
+            // コンテンツ（拡大エフェクトが上方にはみ出す余白を確保）
+            VStack(spacing: 0) {
+                // 拡大エフェクト用の上マージン
+                Spacer()
+                    .frame(height: viewModel.iconSize * 0.8)
+
+                // 上段: アプリ
+                MagnifyingIconRow(items: viewModel.apps, iconSize: viewModel.iconSize)
 
                 if !viewModel.folders.isEmpty {
                     Divider()
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 2)
 
-                    // Finder フォルダ
-                    folderRow
+                    // 下段: Finder フォルダ
+                    MagnifyingIconRow(items: viewModel.folders, iconSize: viewModel.iconSize)
                 }
+
+                // 弧の深さ分のスペーサー
+                Spacer()
+                    .frame(height: arcDepth + 4)
             }
-            .padding(.horizontal, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .opacity(isHovered ? 1.0 : 0.5)
@@ -37,47 +54,22 @@ struct FloatingBarView: View {
         .onHover { hovering in
             isHovered = hovering
         }
-    }
-
-    // MARK: - Subviews
-
-    private var appRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(viewModel.apps) { item in
-                    itemView(for: item)
+        .contextMenu {
+            Text("バーのサイズ")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Divider()
+            ForEach(BarSize.allCases, id: \.self) { size in
+                Button {
+                    viewModel.barSize = size
+                } label: {
+                    if viewModel.barSize == size {
+                        Label(size.rawValue, systemImage: "checkmark")
+                    } else {
+                        Text(size.rawValue)
+                    }
                 }
             }
-            .padding(.horizontal, 4)
         }
-    }
-
-    private var folderRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(viewModel.folders) { item in
-                    itemView(for: item)
-                }
-            }
-            .padding(.horizontal, 4)
-        }
-    }
-
-    private func itemView(for item: AppItem) -> some View {
-        VStack(spacing: 2) {
-            if let icon = item.icon {
-                Image(nsImage: icon)
-                    .resizable()
-                    .frame(width: 32, height: 32)
-            } else {
-                Image(systemName: "app.dashed")
-                    .frame(width: 32, height: 32)
-            }
-            Text(item.name)
-                .font(.system(size: 9))
-                .lineLimit(1)
-                .frame(width: 44)
-        }
-        .frame(width: 48)
     }
 }
