@@ -129,11 +129,27 @@ if let windows = windowsRef as? [AXUIElement] {
 | 実装複雑さ | 高い | 中程度 |
 | 将来性 | ◎ | ◎（ScriptingBridge 自体は安定） |
 
+**⚠️ 型キャスト禁止（dyld クラッシュ）**
+
+ScriptingBridge が動的生成するクラス（`FinderApplication`, `FinderFinderWindow` 等）への
+Swift 型キャスト（`as? FinderApplication`）はバイナリに静的シンボル参照を埋め込むため、
+dyld がランタイムロード時に `symbol not found` でクラッシュする。
+
+**採用：KVC アクセス（`value(forKey:)`）**
+
 ```swift
-// FinderMonitor での利用イメージ
-// Xcode で Finder.app の ScriptingBridge ヘッダを生成して使用
-// target: フォルダの URL（フルパス）
-// miniaturized: 最小化状態
+// NG: as? FinderApplication → dyld クラッシュ
+// OK: value(forKey:) で動的アクセス
+guard let finder = SBApplication(bundleIdentifier: "com.apple.finder"),
+      let windows = finder.value(forKey: "FinderWindows") as? [AnyObject] else { return }
+
+for window in windows {
+    guard let nsWindow = window as? NSObject,
+          let target = nsWindow.value(forKey: "target") as? NSObject,
+          let urlString = target.value(forKey: "URL") as? String,  // KVC は ObjC 名 "URL" をそのまま使う
+          let url = URL(string: urlString) else { continue }
+    // url がフォルダのフルパス
+}
 ```
 
 **更新方式：ポーリング（1〜2秒間隔）**
