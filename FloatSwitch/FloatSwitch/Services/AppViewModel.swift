@@ -3,7 +3,7 @@
 //  FloatSwitch
 //
 
-import Foundation
+import AppKit
 
 // MARK: - BarSize
 
@@ -50,7 +50,17 @@ final class AppViewModel {
 
     var barSize: BarSize = .medium
 
-    var apps: [AppItem] { appMonitor.apps }
+    /// true のとき .accessory（常駐型）アプリも表示する
+    var showAccessoryApps: Bool = false
+
+    var apps: [AppItem] {
+        appMonitor.apps.filter { item in
+            guard case .app(let runningApp) = item.kind else { return true }
+            if runningApp.activationPolicy == .regular { return true }
+            return showAccessoryApps && runningApp.activationPolicy == .accessory
+        }
+    }
+
     var folders: [AppItem] { finderMonitor.folders }
     var iconSize: CGFloat { barSize.iconSize }
 }

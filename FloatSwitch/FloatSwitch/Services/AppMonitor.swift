@@ -24,8 +24,9 @@ final class AppMonitor {
     }
 
     private func loadRunningApps() {
+        // .prohibited（システム内部プロセス等）のみ除外し、あとは AppViewModel でフィルタ
         apps = NSWorkspace.shared.runningApplications
-            .filter { $0.activationPolicy == .regular }
+            .filter { $0.activationPolicy != .prohibited }
             .map { AppItem(app: $0) }
     }
 
@@ -38,7 +39,7 @@ final class AppMonitor {
             queue: .main
         ) { [weak self] notification in
             guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-                  app.activationPolicy == .regular else { return }
+                  app.activationPolicy != .prohibited else { return }
             self?.apps.append(AppItem(app: app))
         }
 

@@ -55,10 +55,26 @@ struct FloatingBarView: View {
             isHovered = hovering
         }
         .contextMenu {
+            // --- アプリ表示フィルター ---
+            Text("表示するアプリ")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Button {
+                viewModel.showAccessoryApps.toggle()
+            } label: {
+                if viewModel.showAccessoryApps {
+                    Label("ウィンドウ形式 + 常駐アプリ", systemImage: "checkmark")
+                } else {
+                    Text("ウィンドウ形式 + 常駐アプリ")
+                }
+            }
+
+            Divider()
+
+            // --- バーのサイズ ---
             Text("バーのサイズ")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Divider()
             ForEach(BarSize.allCases, id: \.self) { size in
                 Button {
                     viewModel.barSize = size
