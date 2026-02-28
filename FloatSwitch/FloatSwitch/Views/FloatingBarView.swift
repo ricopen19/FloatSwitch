@@ -60,12 +60,12 @@ struct FloatingBarView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Button {
-                viewModel.showAccessoryApps.toggle()
+                viewModel.showResidentApps.toggle()
             } label: {
-                if viewModel.showAccessoryApps {
-                    Label("ウィンドウ形式 + 常駐アプリ", systemImage: "checkmark")
+                if viewModel.showResidentApps {
+                    Label("常駐アプリを表示", systemImage: "checkmark")
                 } else {
-                    Text("ウィンドウ形式 + 常駐アプリ")
+                    Text("常駐アプリを表示")
                 }
             }
 
