@@ -11,8 +11,13 @@ import SwiftUI
 /// 常時最前面に表示するフローティングパネル
 final class FloatingPanel: NSPanel {
     init(viewModel: AppViewModel) {
+        let initialSize = viewModel.barSize
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 80),
+            contentRect: NSRect(
+                x: 0, y: 0,
+                width: initialSize.panelWidth,
+                height: initialSize.panelHeight
+            ),
             styleMask: [.nonactivatingPanel, .fullSizeContentView, .borderless],
             backing: .buffered,
             defer: false
@@ -39,6 +44,17 @@ final class FloatingPanel: NSPanel {
     // フローティングパネルはキーウィンドウになれる（ホットキー受付のため）
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
+
+    /// barSize 変更時に右下コーナーを固定したままパネルをリサイズする
+    func resize(to size: BarSize) {
+        let newSize = CGSize(width: size.panelWidth, height: size.panelHeight)
+        // 現在の右下コーナーを維持
+        let newOrigin = CGPoint(
+            x: frame.maxX - newSize.width,
+            y: frame.minY
+        )
+        setFrame(NSRect(origin: newOrigin, size: newSize), display: true, animate: true)
+    }
 
     // MARK: - Private
 
