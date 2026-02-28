@@ -77,4 +77,15 @@ final class AppMonitor {
             apps[index] = AppItem(app: app)
         }
     }
+
+    /// Accessibility API でアプリが1つ以上のウィンドウを持つか確認する
+    ///
+    /// - Note: `AXIsProcessTrusted()` が false の場合は常に false を返す
+    static func hasWindows(pid: pid_t) -> Bool {
+        let appElement = AXUIElementCreateApplication(pid)
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &value) == .success,
+              let windows = value as? [AXUIElement] else { return false }
+        return !windows.isEmpty
+    }
 }

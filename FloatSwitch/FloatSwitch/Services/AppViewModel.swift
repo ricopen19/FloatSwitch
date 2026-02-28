@@ -50,14 +50,27 @@ final class AppViewModel {
 
     var barSize: BarSize = .medium
 
-    /// true のとき .accessory（常駐型）アプリも表示する
-    var showAccessoryApps: Bool = false
+    /// true のとき ウィンドウを持たない常駐アプリ（.regular でウィンドウなし / .accessory）も表示する
+    var showResidentApps: Bool = false
 
     var apps: [AppItem] {
-        appMonitor.apps.filter { item in
+        let trusted = AXIsProcessTrusted()
+        return appMonitor.apps.filter { item in
             guard case .app(let runningApp) = item.kind else { return true }
-            if runningApp.activationPolicy == .regular { return true }
-            return showAccessoryApps && runningApp.activationPolicy == .accessory
+
+            // .accessory（常駐型）は toggle でのみ表示
+            if runningApp.activationPolicy == .accessory {
+                return showResidentApps
+            }
+
+            // Accessibility 許可済みの場合: ウィンドウ有無で判定
+            if trusted {
+                let hasWindows = AppMonitor.hasWindows(pid: runningApp.processIdentifier)
+                return hasWindows || showResidentApps
+            }
+
+            // Accessibility 未許可の場合: 全 .regular を表示（フォールバック）
+            return true
         }
     }
 
