@@ -10,22 +10,23 @@ import AppKit
 final class AppMonitor {
     private(set) var apps: [AppItem] = []
 
+    /// 0.5 秒ごとに増加するカウンタ。AppViewModel.apps のウィンドウ判定を定期再評価させるために使う
+    private(set) var windowCheckVersion: Int = 0
+
     private var observers: [NSObjectProtocol] = []
+    private var windowCheckTimer: Timer?
 
     init() {
         loadRunningApps()
         setupObservers()
+        startWindowCheckTimer()
     }
 
     deinit {
         observers.forEach {
             NSWorkspace.shared.notificationCenter.removeObserver($0)
         }
-    }
-
-    /// Accessibility 権限付与後などに外部から呼び出してアプリ一覧を再読み込みする
-    func refreshApps() {
-        loadRunningApps()
+        windowCheckTimer?.invalidate()
     }
 
     private func loadRunningApps() {
@@ -83,14 +84,31 @@ final class AppMonitor {
         }
     }
 
-    /// Accessibility API でアプリが1つ以上のウィンドウを持つか確認する
+    /// layer == 0（通常アプリウィンドウ）を持つアプリの PID セットを返す
     ///
-    /// - Note: `AXIsProcessTrusted()` が false の場合は常に false を返す
-    static func hasWindows(pid: pid_t) -> Bool {
-        let appElement = AXUIElementCreateApplication(pid)
-        var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &value) == .success,
-              let windows = value as? [AXUIElement] else { return false }
-        return !windows.isEmpty
+    /// `CGWindowListCopyWindowInfo` を使うため Accessibility 権限不要。
+    /// メニューバー常駐アプリ（layer 24-25）やデスクトップ（負レイヤー）は除外される。
+    static func pidsWithWindows() -> Set<pid_t> {
+        guard let list = CGWindowListCopyWindowInfo(
+            [.optionAll, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]] else { return [] }
+
+        var pids = Set<pid_t>()
+        for info in list {
+            guard let pid   = info[kCGWindowOwnerPID as String] as? Int,
+                  let layer = info[kCGWindowLayer as String] as? Int,
+                  layer == 0 else { continue }
+            pids.insert(pid_t(pid))
+        }
+        return pids
+    }
+
+    // MARK: - Private
+
+    private func startWindowCheckTimer() {
+        windowCheckTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            self?.windowCheckVersion += 1
+        }
     }
 }

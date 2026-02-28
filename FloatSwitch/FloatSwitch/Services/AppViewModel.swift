@@ -45,23 +45,22 @@ final class AppViewModel {
     var showResidentApps: Bool = false
 
     var apps: [AppItem] {
-        let trusted = AXIsProcessTrusted()
+        // windowCheckVersion を参照することで 0.5 秒ごとに再評価を強制する
+        _ = appMonitor.windowCheckVersion
+
+        // CGWindowList で layer == 0 のウィンドウを持つ PID を一括取得（権限不要）
+        let windowedPIDs = AppMonitor.pidsWithWindows()
+
         return appMonitor.apps.filter { item in
             guard case .app(let runningApp) = item.kind else { return true }
 
-            // .accessory（常駐型）は toggle でのみ表示
+            // .accessory（メニューバー常駐）は toggle でのみ表示
             if runningApp.activationPolicy == .accessory {
                 return showResidentApps
             }
 
-            // Accessibility 許可済みの場合: ウィンドウ有無で判定
-            if trusted {
-                let hasWindows = AppMonitor.hasWindows(pid: runningApp.processIdentifier)
-                return hasWindows || showResidentApps
-            }
-
-            // Accessibility 未許可の場合: 全 .regular を表示（フォールバック）
-            return true
+            // .regular: ウィンドウ（layer 0）を持つなら常に表示、なければ toggle 次第
+            return windowedPIDs.contains(runningApp.processIdentifier) || showResidentApps
         }
     }
 
