@@ -7,8 +7,9 @@
 
 import SwiftUI
 
-/// フローティングバーのルートビュー（Phase 2 プレースホルダー）
+/// フローティングバーのルートビュー（Phase 3: アプリ・フォルダ一覧表示）
 struct FloatingBarView: View {
+    var viewModel: AppViewModel
     @State private var isHovered = false
 
     var body: some View {
@@ -16,10 +17,19 @@ struct FloatingBarView: View {
             RoundedRectangle(cornerRadius: 16)
                 .fill(.regularMaterial)
 
-            Text("FloatSwitch")
-                .font(.headline)
-                .foregroundStyle(.primary)
-                .padding()
+            HStack(spacing: 0) {
+                // 起動中アプリ
+                appRow
+
+                if !viewModel.folders.isEmpty {
+                    Divider()
+                        .padding(.vertical, 8)
+
+                    // Finder フォルダ
+                    folderRow
+                }
+            }
+            .padding(.horizontal, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .opacity(isHovered ? 1.0 : 0.5)
@@ -28,9 +38,46 @@ struct FloatingBarView: View {
             isHovered = hovering
         }
     }
-}
 
-#Preview {
-    FloatingBarView()
-        .frame(width: 400, height: 80)
+    // MARK: - Subviews
+
+    private var appRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(viewModel.apps) { item in
+                    itemView(for: item)
+                }
+            }
+            .padding(.horizontal, 4)
+        }
+    }
+
+    private var folderRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(viewModel.folders) { item in
+                    itemView(for: item)
+                }
+            }
+            .padding(.horizontal, 4)
+        }
+    }
+
+    private func itemView(for item: AppItem) -> some View {
+        VStack(spacing: 2) {
+            if let icon = item.icon {
+                Image(nsImage: icon)
+                    .resizable()
+                    .frame(width: 32, height: 32)
+            } else {
+                Image(systemName: "app.dashed")
+                    .frame(width: 32, height: 32)
+            }
+            Text(item.name)
+                .font(.system(size: 9))
+                .lineLimit(1)
+                .frame(width: 44)
+        }
+        .frame(width: 48)
+    }
 }

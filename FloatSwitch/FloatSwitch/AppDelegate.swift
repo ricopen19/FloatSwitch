@@ -9,13 +9,12 @@ import AppKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var floatingPanel: FloatingPanel?
+    private var viewModel: AppViewModel?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        setupFloatingPanel()
-    }
-
-    private func setupFloatingPanel() {
-        floatingPanel = FloatingPanel()
+        let vm = AppViewModel()
+        viewModel = vm
+        floatingPanel = FloatingPanel(viewModel: vm)
         floatingPanel?.orderFront(nil)
     }
 }
