@@ -21,15 +21,6 @@ enum BarSize: String, CaseIterable {
         }
     }
 
-    /// NSPanel の幅
-    var panelWidth: CGFloat {
-        switch self {
-        case .small:  return 440
-        case .medium: return 560
-        case .large:  return 720
-        }
-    }
-
     /// NSPanel の高さ（2 行 + 弧 + 拡大マージン）
     var panelHeight: CGFloat {
         let rowHeight = iconSize + 28   // アイコン + ラベル + padding
@@ -76,4 +67,25 @@ final class AppViewModel {
 
     var folders: [AppItem] { finderMonitor.folders }
     var iconSize: CGFloat { barSize.iconSize }
+
+    /// 表示中のアプリ・フォルダ数からパネル幅を動的計算する
+    ///
+    /// MagnifyingIconRow のレイアウト定数と合わせる:
+    ///   itemFrameWidth = iconSize + 16, spacing = 6, horizontalPadding = 8
+    var panelWidth: CGFloat {
+        let itemFrameWidth = iconSize + 16
+        let spacing: CGFloat = 6
+        let padding: CGFloat = 8  // .padding(.horizontal, 8) → 両側で 16pt
+
+        func rowWidth(_ count: Int) -> CGFloat {
+            guard count > 0 else { return 0 }
+            return CGFloat(count) * itemFrameWidth
+                + CGFloat(count - 1) * spacing
+                + padding * 2
+        }
+
+        let contentWidth = max(rowWidth(apps.count), rowWidth(folders.count))
+        let maxWidth = NSScreen.main?.visibleFrame.width ?? 1200
+        return min(max(contentWidth, 120), maxWidth)
+    }
 }

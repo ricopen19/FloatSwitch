@@ -23,6 +23,11 @@ final class AppMonitor {
         }
     }
 
+    /// Accessibility 権限付与後などに外部から呼び出してアプリ一覧を再読み込みする
+    func refreshApps() {
+        loadRunningApps()
+    }
+
     private func loadRunningApps() {
         // .prohibited（システム内部プロセス等）のみ除外し、あとは AppViewModel でフィルタ
         apps = NSWorkspace.shared.runningApplications
