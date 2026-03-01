@@ -16,8 +16,29 @@ import SwiftUI
 /// パネルが非アクティブな状態での最初のクリックがウィンドウ活性化に消費される。
 /// これにより「1クリックでアクティブ → 2クリック目でスイッチ」という2クリック問題が発生する。
 /// `acceptsFirstMouse` を true にすることで初回クリックもジェスチャとして通す。
+///
+/// また `rightMouseDown` をオーバーライドしてコンテキストメニューをバー上端の直上に表示する。
+/// バーが Dock 直上に配置されているとき、システムのデフォルト配置ではメニューが
+/// Dock の後ろ（不可視領域）に描画されてしまうため、上方向へ強制展開する。
 private final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func rightMouseDown(with event: NSEvent) {
+        guard let menu = menu(for: event), !menu.items.isEmpty, let window else {
+            super.rightMouseDown(with: event)
+            return
+        }
+
+        // バー上端の直上にメニューを展開する（Dock の後ろに隠れるのを防ぐ）
+        // positioning: .last → 最後のアイテムが at に配置され、メニューが上方向へ展開される
+        let screenX = window.frame.minX + event.locationInWindow.x
+        let barTopY  = window.frame.maxY
+        menu.popUp(
+            positioning: menu.items.last,
+            at: NSPoint(x: screenX, y: barTopY + 4),
+            in: nil
+        )
+    }
 }
 
 // MARK: - FloatingPanel
