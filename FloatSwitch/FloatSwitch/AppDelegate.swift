@@ -12,6 +12,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var viewModel: AppViewModel?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // ウィンドウ切り替え機能（最小化解除・ウィンドウ一覧取得）に AX 権限が必要
+        requestAccessibilityPermissionIfNeeded()
+
         let vm = AppViewModel()
         viewModel = vm
         let panel = FloatingPanel(viewModel: vm)
@@ -23,6 +26,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     // MARK: - Private
+
+    /// AX 権限が未取得なら System Settings へのダイアログを表示する
+    ///
+    /// 権限の有無は `AXIsProcessTrusted()` で毎回判定するため、
+    /// 権限付与後の再起動は不要（次回の AX 呼び出し時に自動で有効になる）
+    private func requestAccessibilityPermissionIfNeeded() {
+        guard !AXIsProcessTrusted() else { return }
+        let options: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true]
+        AXIsProcessTrustedWithOptions(options)
+    }
 
     /// panelWidth / barSize の変化を監視してパネルをリサイズする
     ///

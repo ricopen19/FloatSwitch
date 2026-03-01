@@ -8,6 +8,20 @@
 import AppKit
 import SwiftUI
 
+// MARK: - FirstMouseHostingView
+
+/// 最初のクリックをタップジェスチャとして即座に処理するホスティングビュー
+///
+/// デフォルトの `NSHostingView` は `acceptsFirstMouse` が false のため、
+/// パネルが非アクティブな状態での最初のクリックがウィンドウ活性化に消費される。
+/// これにより「1クリックでアクティブ → 2クリック目でスイッチ」という2クリック問題が発生する。
+/// `acceptsFirstMouse` を true にすることで初回クリックもジェスチャとして通す。
+private final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
+// MARK: - FloatingPanel
+
 /// 常時最前面に表示するフローティングパネル
 final class FloatingPanel: NSPanel {
     private let edgeMargin: CGFloat = 20
@@ -34,7 +48,7 @@ final class FloatingPanel: NSPanel {
         isOpaque = false
         hasShadow = true
 
-        let hostingView = NSHostingView(rootView: FloatingBarView(viewModel: viewModel))
+        let hostingView = FirstMouseHostingView(rootView: FloatingBarView(viewModel: viewModel))
         // SwiftUI の intrinsic サイズによるパネル自動拡縮を無効化（動的リサイズは AppDelegate が管理）
         hostingView.sizingOptions = []
         self.contentView = hostingView

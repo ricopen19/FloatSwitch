@@ -10,11 +10,15 @@ import SwiftUI
 /// - `onContinuousHover` でマウス X 座標を取得
 /// - 各アイテムのレイアウトフレームは固定（HStack が揺れない）
 /// - `scaleEffect(anchor: .bottom)` でアイコンが上方向に拡大
+/// - `onTap` コールバックでタップ時の動作を外部に委譲
 struct MagnifyingIconRow: View {
     let items: [AppItem]
     let iconSize: CGFloat
+    var onTap: (AppItem) -> Void = { _ in }  // デフォルトは no-op
 
-    @State private var hoverX: CGFloat? = nil
+    // swiftlint:disable implicit_optional_initialization
+    @State private var hoverX: CGFloat? = nil  // @State の初期値として nil が必要
+    // swiftlint:enable implicit_optional_initialization
 
     private let itemSpacing: CGFloat = 6
     private let horizontalPadding: CGFloat = 8
@@ -68,6 +72,36 @@ struct MagnifyingIconRow: View {
         // レイアウトフレームは固定（scaleEffect は視覚のみ、layout に影響しない）
         .frame(width: itemFrameWidth, alignment: .center)
         .scaleEffect(scale, anchor: .bottom)
+        .onTapGesture { onTap(item) }
+        .contextMenu { windowContextMenu(for: item) }
+    }
+
+    /// 複数ウィンドウを持つアプリのとき右クリックメニューにウィンドウ一覧を表示する
+    ///
+    /// - AX 権限がない場合 / ウィンドウ数が 1 以下の場合はコンテンツなし（メニュー非表示）
+    @ViewBuilder
+    private func windowContextMenu(for item: AppItem) -> some View {
+        if case .app(let app) = item.kind {
+            // コンテキストメニューは全ウィンドウを表示（cycling と異なりフィルタなし）
+            let ws = WindowSwitcher.windows(for: app.processIdentifier)
+            if ws.count > 1 {
+                Text("ウィンドウを選択")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                ForEach(ws) { window in
+                    Button {
+                        WindowSwitcher.activate(window, app: app)
+                    } label: {
+                        let label = window.title.isEmpty ? "無題" : window.title
+                        if window.isMinimized {
+                            Label(label, systemImage: "minus.square")
+                        } else {
+                            Text(label)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /// index 番目のアイテムの拡大率を返す（距離に応じた二次減衰）

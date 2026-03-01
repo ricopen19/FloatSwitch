@@ -5,6 +5,7 @@
 //  Created by 土屋良平 on 2026/02/27.
 //
 
+import AppKit
 import SwiftUI
 
 /// フローティングバーのルートビュー
@@ -32,7 +33,9 @@ struct FloatingBarView: View {
                     .frame(height: viewModel.iconSize * 0.8)
 
                 // 上段: アプリ
-                MagnifyingIconRow(items: viewModel.apps, iconSize: viewModel.iconSize)
+                MagnifyingIconRow(items: viewModel.apps, iconSize: viewModel.iconSize) { item in
+                    handleTap(item)
+                }
 
                 if !viewModel.folders.isEmpty {
                     Divider()
@@ -40,7 +43,9 @@ struct FloatingBarView: View {
                         .padding(.vertical, 2)
 
                     // 下段: Finder フォルダ
-                    MagnifyingIconRow(items: viewModel.folders, iconSize: viewModel.iconSize)
+                    MagnifyingIconRow(items: viewModel.folders, iconSize: viewModel.iconSize) { item in
+                        handleTap(item)
+                    }
                 }
 
                 // 弧の深さ分のスペーサー
@@ -54,7 +59,7 @@ struct FloatingBarView: View {
         .onHover { hovering in
             isHovered = hovering
         }
-        .contextMenu {
+        .contextMenu { // バー全体の右クリック（サイズ変更・フィルター設定）
             // --- アプリ表示フィルター ---
             Text("表示するアプリ")
                 .font(.caption)
@@ -66,6 +71,22 @@ struct FloatingBarView: View {
                     Label("常駐アプリを表示", systemImage: "checkmark")
                 } else {
                     Text("常駐アプリを表示")
+                }
+            }
+
+            Divider()
+
+            // --- アクセシビリティ権限（ウィンドウ巡回・一覧表示に必要）---
+            if AXIsProcessTrusted() {
+                Label("アクセシビリティ: 許可済み", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.secondary)
+            } else {
+                Button {
+                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                        NSWorkspace.shared.open(url)
+                    }
+                } label: {
+                    Label("アクセシビリティを許可する…", systemImage: "exclamationmark.triangle.fill")
                 }
             }
 
@@ -86,6 +107,17 @@ struct FloatingBarView: View {
                     }
                 }
             }
+        }
+    }
+
+    // MARK: - Private
+
+    private func handleTap(_ item: AppItem) {
+        switch item.kind {
+        case .app(let app):
+            WindowSwitcher.activateMostRecent(app)
+        case .folder(let url):
+            WindowSwitcher.openFolder(url)
         }
     }
 }
