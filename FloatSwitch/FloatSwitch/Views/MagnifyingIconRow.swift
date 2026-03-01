@@ -82,8 +82,9 @@ struct MagnifyingIconRow: View {
     @ViewBuilder
     private func windowContextMenu(for item: AppItem) -> some View {
         if case .app(let app) = item.kind {
-            // コンテキストメニューは全ウィンドウを表示（cycling と異なりフィルタなし）
+            // タイトルが空の内部ウィンドウ（Chrome の拡張機能 BG ページ等）を除外する
             let ws = WindowSwitcher.windows(for: app.processIdentifier)
+                .filter { !$0.title.isEmpty }
             if ws.count > 1 {
                 Text("ウィンドウを選択")
                     .font(.caption)
