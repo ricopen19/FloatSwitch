@@ -71,22 +71,6 @@ struct FloatingBarView: View {
 
             Divider()
 
-            // --- デバッグ ---
-            Text("デバッグ")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Button {
-                viewModel.debugAppFiltering.toggle()
-            } label: {
-                if viewModel.debugAppFiltering {
-                    Label("フィルタ出力", systemImage: "checkmark")
-                } else {
-                    Text("フィルタ出力")
-                }
-            }
-
-            Divider()
-
             // --- バーのサイズ ---
             Text("バーのサイズ")
                 .font(.caption)
