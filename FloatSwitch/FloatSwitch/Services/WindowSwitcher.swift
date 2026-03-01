@@ -71,25 +71,38 @@ enum WindowSwitcher {
 
     /// クリック時の基本動作: 最前面ウィンドウを呼び出す
     ///
-    /// - AX 権限あり: AX で frontmost ウィンドウを raise（最小化されていれば解除）→ activate
-    /// - AX 権限なし / AX でウィンドウ取得失敗: `activate()` のみにフォールバック
+    /// ## 設計方針
     ///
-    /// `activate()` だけでは Space 切り替えは起きるがウィンドウが前面に来ないケースがある。
-    /// `kAXRaiseAction` を明示的に呼ぶことで確実に最前面に持ってくる。
+    /// `kAXRaiseAction` はウィンドウを前面に出せるが **Space をまたがない**。
+    /// そのため複数 Space / 外部ディスプレイの場合に常に同じ Space のウィンドウが
+    /// 前面に来てしまう問題がある。
+    ///
+    /// 非アクティブ時は `app.activate()` だけを使うことで macOS に Space 切り替えを
+    /// 委ね、最後に使ったウィンドウが正しく前面に出るようにする。
+    ///
+    /// AX は以下の 2 ケースにのみ使用する:
+    /// - 同 Space 内での **ウィンドウ巡回**（アクティブ + 複数ウィンドウ）
+    /// - **最小化ウィンドウの復元**（`activate()` だけでは解除されない）
     static func activateMostRecent(_ app: NSRunningApplication) {
         if AXIsProcessTrusted() {
-            // 内部ウィンドウ（拡張機能 BG ページ等）を除いた実際のウィンドウだけで巡回する
             let ws = windows(for: app.processIdentifier).filter(\.isAppWindow)
-            if !ws.isEmpty {
-                // AX ウィンドウリストは z-order 順（frontmost が ws[0]）
-                // - 既にアクティブ & 複数ウィンドウ → ws[1] を raise して巡回
-                // - 非アクティブ or 1ウィンドウ   → ws[0]（最近使ったウィンドウ）を raise
-                let target = (app.isActive && ws.count > 1) ? ws[1] : ws[0]
-                unminimizeAndRaise(target, app: app)
+
+            // ① 巡回: アクティブ + 同 Space に複数ウィンドウ → 次のウィンドウへ
+            if app.isActive && ws.count > 1 {
+                unminimizeAndRaise(ws[1], app: app)
+                return
+            }
+
+            // ② 最小化解除: activate() だけでは最小化は解除されないため AX を使う
+            if let minimized = ws.first(where: { $0.isMinimized }) {
+                unminimizeAndRaise(minimized, app: app)
                 return
             }
         }
-        // AX 権限なし、または AX ウィンドウが取得できない場合のフォールバック
+
+        // 非アクティブ時: activate() に委ねる
+        // - macOS が「最後に使用した Space のウィンドウ」へ自動切り替えする
+        // - kAXRaiseAction は Space をまたがないため外部ディスプレイのウィンドウに届かない
         if !app.activate(options: .activateIgnoringOtherApps),
            let bundleURL = app.bundleURL {
             let config = NSWorkspace.OpenConfiguration()
