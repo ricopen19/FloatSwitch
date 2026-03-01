@@ -43,24 +43,107 @@ final class AppViewModel {
 
     /// true のとき ウィンドウを持たない常駐アプリ（.regular でウィンドウなし / .accessory）も表示する
     var showResidentApps: Bool = false
+    /// true のとき フィルタ判定をコンソールに出力する
+    var debugAppFiltering: Bool = false
+    /// デバッグ出力の対象アプリ名（空なら全件）
+    var debugFilterNames: Set<String> = ["Nani", "VoiceInk", "QuickOCR"]
+
+    private var lastDebugVersion: Int = -1
+    /// Space 切替直後の一時的なウィンドウ判定欠落を吸収する保持秒数
+    private let windowPresenceGrace: TimeInterval = 1.8
+    /// PID ごとの「最後にウィンドウありだった時刻」
+    private var lastSeenWindowAt: [pid_t: Date] = [:]
 
     var apps: [AppItem] {
         // windowCheckVersion を参照することで 0.5 秒ごとに再評価を強制する
         _ = appMonitor.windowCheckVersion
 
-        // CGWindowList で layer == 0 のウィンドウを持つ PID を一括取得（権限不要）
-        let windowedPIDs = AppMonitor.pidsWithWindows()
+        // AppMonitor 側で定期更新したウィンドウ判定キャッシュを使う
+        let windowedPIDs = appMonitor.windowedPIDs
+        let effectiveWindowedPIDs = windowedPIDsWithGrace(current: windowedPIDs)
+
+        if debugAppFiltering,
+           appMonitor.windowCheckVersion % 4 == 0,
+           lastDebugVersion != appMonitor.windowCheckVersion {
+            lastDebugVersion = appMonitor.windowCheckVersion
+            debugPrintFilter(rawWindowedPIDs: windowedPIDs, effectiveWindowedPIDs: effectiveWindowedPIDs)
+        }
 
         return appMonitor.apps.filter { item in
             guard case .app(let runningApp) = item.kind else { return true }
 
-            // .accessory（メニューバー常駐）は toggle でのみ表示
-            if runningApp.activationPolicy == .accessory {
-                return showResidentApps
-            }
+            // Dock の丸が付くのは .regular のみ。 .accessory などは常に非表示。
+            guard runningApp.activationPolicy == .regular else { return false }
+            // LSUIElement / LSBackgroundOnly は Dock に出ない想定なので常に非表示
+            if Self.isAgentApp(runningApp) { return false }
 
             // .regular: ウィンドウ（layer 0）を持つなら常に表示、なければ toggle 次第
-            return windowedPIDs.contains(runningApp.processIdentifier) || showResidentApps
+            return effectiveWindowedPIDs.contains(runningApp.processIdentifier) || showResidentApps
+        }
+    }
+
+    // MARK: - Private
+
+    private static func isAgentApp(_ app: NSRunningApplication) -> Bool {
+        guard let bundleURL = app.bundleURL,
+              let bundle = Bundle(url: bundleURL),
+              let info = bundle.infoDictionary else { return false }
+        if let uiElement = info["LSUIElement"] as? Bool, uiElement { return true }
+        if let backgroundOnly = info["LSBackgroundOnly"] as? Bool, backgroundOnly { return true }
+        return false
+    }
+
+    private func windowedPIDsWithGrace(current: Set<pid_t>) -> Set<pid_t> {
+        let now = Date()
+        for pid in current {
+            lastSeenWindowAt[pid] = now
+        }
+
+        let aliveAppPIDs: Set<pid_t> = Set(
+            appMonitor.apps.compactMap { item in
+                guard case .app(let app) = item.kind else { return nil }
+                return app.processIdentifier
+            }
+        )
+
+        lastSeenWindowAt = lastSeenWindowAt.filter { pid, date in
+            guard aliveAppPIDs.contains(pid) else { return false }
+            return now.timeIntervalSince(date) <= windowPresenceGrace
+        }
+
+        return current.union(lastSeenWindowAt.keys)
+    }
+
+    private func debugPrintFilter(rawWindowedPIDs: Set<pid_t>, effectiveWindowedPIDs: Set<pid_t>) {
+        var debugPIDs: Set<pid_t> = []
+
+        print(
+            "[FloatSwitch][Debug] showResidentApps=\(showResidentApps) " +
+            "windowedPIDs(raw/effective)=\(rawWindowedPIDs.count)/\(effectiveWindowedPIDs.count)"
+        )
+        for item in appMonitor.apps {
+            guard case .app(let runningApp) = item.kind else { continue }
+            if !debugFilterNames.isEmpty, !debugFilterNames.contains(item.name) { continue }
+            let pid = runningApp.processIdentifier
+            debugPIDs.insert(pid)
+            let policy = runningApp.activationPolicy
+            let isRegular = policy == .regular
+            let isAgent = Self.isAgentApp(runningApp)
+            let rawHasWindow = rawWindowedPIDs.contains(pid)
+            let hasWindow = effectiveWindowedPIDs.contains(pid)
+            let shouldShow = isRegular && !isAgent && (hasWindow || showResidentApps)
+
+            print(
+                " - \(item.name) pid=\(pid) policy=\(policy) agent=\(isAgent) " +
+                "window(raw/effective)=\(rawHasWindow)/\(hasWindow) show=\(shouldShow)"
+            )
+        }
+
+        if !debugPIDs.isEmpty {
+            let lines = AppMonitor.windowDebugLines(for: debugPIDs)
+            for line in lines {
+                print("   window: \(line)")
+            }
         }
     }
 
