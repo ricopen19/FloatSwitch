@@ -31,17 +31,22 @@ struct WindowInfo: Identifiable {
 /// - AX 権限がない場合は `NSRunningApplication.activate()` にフォールバック
 enum WindowSwitcher {
 
-    // MARK: - Internal state
+    // MARK: - State
 
-    /// プロセスごとの巡回インデックス。AX がウィンドウ順序を即時更新しないアプリ（Chrome 等）対策。
+    /// プロセスごとの AX 巡回インデックス
     private static var cycleIndex: [pid_t: Int] = [:]
+
+    /// 直前にアクティブ化したアプリの PID
+    ///
+    /// Chrome など click 時に `isActive` が false になるアプリは
+    /// `app.isActive` ではなく「同じアプリアイコンを連続タップしたか」で巡回を判定する。
+    private static var lastActivatedPID: pid_t = 0
 
     // MARK: - Public
 
     /// アプリの全ウィンドウを AX 経由で取得する
     ///
     /// AX 権限がない / ウィンドウ取得失敗の場合は空配列を返す
-
     static func windows(for pid: pid_t) -> [WindowInfo] {
         guard AXIsProcessTrusted() else { return [] }
 
@@ -75,49 +80,50 @@ enum WindowSwitcher {
         }
     }
 
-    /// クリック時の基本動作: 最前面ウィンドウを呼び出す
+    /// クリック時の基本動作: 最前面ウィンドウを呼び出す / 複数ウィンドウを巡回する
     ///
     /// ## 設計方針
     ///
-    /// `kAXRaiseAction` はウィンドウを前面に出せるが **Space をまたがない**。
-    /// そのため複数 Space / 外部ディスプレイの場合に常に同じ Space のウィンドウが
-    /// 前面に来てしまう問題がある。
+    /// ### `isActive` に頼らない巡回判定
+    /// FloatSwitch のクリック時、Chrome 等の一部アプリは `NSRunningApplication.isActive`
+    /// が一瞬 false になる。そのため `isActive` ではなく `lastActivatedPID`（直前に
+    /// アクティブ化した PID）との一致で「同じアプリアイコンを連続タップ = 巡回意図」を判定する。
     ///
-    /// 非アクティブ時は `app.activate()` だけを使うことで macOS に Space 切り替えを
-    /// 委ね、最後に使ったウィンドウが正しく前面に出るようにする。
+    /// ### 3段階フォールバック
+    /// 1. AX で複数ウィンドウが見える → `kAXRaiseAction` で巡回
+    /// 2. AX は 1 枚だが CGWindowList では複数確認できる（Chrome AX 制限）→ `Cmd+\`` で巡回
+    /// 3. どちらも単一 / 初回タップ → `activate()` で macOS に委ねる
     ///
-    /// AX は以下の 2 ケースにのみ使用する:
-    /// - 同 Space 内での **ウィンドウ巡回**（アクティブ + 複数ウィンドウ）
-    /// - **最小化ウィンドウの復元**（`activate()` だけでは解除されない）
+    /// ### Space をまたぐ場合
+    /// `kAXRaiseAction` は Space をまたがないため、別 Space のウィンドウへは `activate()` を使う。
     static func activateMostRecent(_ app: NSRunningApplication) {
-        if AXIsProcessTrusted() {
-            let ws = windows(for: app.processIdentifier).filter(\.isAppWindow)
+        let pid = app.processIdentifier
+        // 「同じアプリを連続タップ」かどうかを lastActivatedPID で判定
+        let isContinuousTap = (lastActivatedPID == pid)
+        lastActivatedPID = pid
 
-            // ① 巡回: アクティブ + 複数ウィンドウ → static なインデックスで順番に進む
-            //
-            // kAXWindowsAttribute のウィンドウ順序が raise 後に更新されないアプリ（Chrome 等）のため、
-            // AX の Z 順に依存せず cycleIndex で自前管理する。
-            if app.isActive && ws.count > 1 {
-                let pid = app.processIdentifier
+        if AXIsProcessTrusted() {
+            let ws = windows(for: pid).filter(\.isAppWindow)
+
+            // ① AX 巡回: 同じアプリ連打 + AX で複数ウィンドウが見える
+            if isContinuousTap && ws.count > 1 {
                 let current = cycleIndex[pid] ?? 0
-                // ウィンドウが閉じられてインデックスが範囲外になっても modulo で補正
                 let next = (current + 1) % ws.count
                 cycleIndex[pid] = next
                 unminimizeAndRaise(ws[next], app: app)
                 return
             }
 
-            // ② 最小化解除: activate() だけでは最小化は解除されないため AX を使う
+            // ② 最小化解除: activate() だけでは解除されないため AX を使う
             if let minimized = ws.first(where: { $0.isMinimized }) {
                 unminimizeAndRaise(minimized, app: app)
                 return
             }
         }
 
-        // 非アクティブ時: activate() に委ね、巡回インデックスをリセットする
-        // - macOS が「最後に使用した Space のウィンドウ」へ自動切り替えする
-        // - kAXRaiseAction は Space をまたがないため外部ディスプレイのウィンドウに届かない
-        cycleIndex[app.processIdentifier] = 0
+        // 初回タップ / 別アプリへの切り替え: macOS の Space 自動切り替えに委ねる
+        // 別 Space のウィンドウへは公開 API では届かないため activate() で macOS に委ねる
+        cycleIndex[pid] = 0
         if !app.activate(options: .activateIgnoringOtherApps),
            let bundleURL = app.bundleURL {
             let config = NSWorkspace.OpenConfiguration()

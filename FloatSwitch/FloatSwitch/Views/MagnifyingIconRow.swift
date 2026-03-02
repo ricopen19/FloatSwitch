@@ -103,7 +103,8 @@ struct MagnifyingIconRow: View {
 
     /// 複数ウィンドウを持つアプリのとき右クリックメニューにウィンドウ一覧を表示する
     ///
-    /// - AX 権限がない場合 / ウィンドウ数が 1 以下の場合はコンテンツなし（メニュー非表示）
+    /// AX 権限がある場合のみウィンドウ一覧を表示する。
+    /// 別 Space のウィンドウは AX から取得できないため、ユーザーは Cmd+\` で対応する。
     @ViewBuilder
     private func windowContextMenu(for item: AppItem) -> some View {
         if case .app(let app) = item.kind {
@@ -132,6 +133,9 @@ struct MagnifyingIconRow: View {
             Button("バーから隠す") { onHide(item) }
         }
     }
+
+
+
 
     /// index 番目のアイテムの拡大率を返す（距離に応じた二次減衰）
     private func magnification(for index: Int) -> CGFloat {
