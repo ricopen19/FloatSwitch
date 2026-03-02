@@ -31,11 +31,17 @@ struct WindowInfo: Identifiable {
 /// - AX 権限がない場合は `NSRunningApplication.activate()` にフォールバック
 enum WindowSwitcher {
 
+    // MARK: - Internal state
+
+    /// プロセスごとの巡回インデックス。AX がウィンドウ順序を即時更新しないアプリ（Chrome 等）対策。
+    private static var cycleIndex: [pid_t: Int] = [:]
+
     // MARK: - Public
 
     /// アプリの全ウィンドウを AX 経由で取得する
     ///
     /// AX 権限がない / ウィンドウ取得失敗の場合は空配列を返す
+
     static func windows(for pid: pid_t) -> [WindowInfo] {
         guard AXIsProcessTrusted() else { return [] }
 
@@ -87,9 +93,17 @@ enum WindowSwitcher {
         if AXIsProcessTrusted() {
             let ws = windows(for: app.processIdentifier).filter(\.isAppWindow)
 
-            // ① 巡回: アクティブ + 同 Space に複数ウィンドウ → 次のウィンドウへ
+            // ① 巡回: アクティブ + 複数ウィンドウ → static なインデックスで順番に進む
+            //
+            // kAXWindowsAttribute のウィンドウ順序が raise 後に更新されないアプリ（Chrome 等）のため、
+            // AX の Z 順に依存せず cycleIndex で自前管理する。
             if app.isActive && ws.count > 1 {
-                unminimizeAndRaise(ws[1], app: app)
+                let pid = app.processIdentifier
+                let current = cycleIndex[pid] ?? 0
+                // ウィンドウが閉じられてインデックスが範囲外になっても modulo で補正
+                let next = (current + 1) % ws.count
+                cycleIndex[pid] = next
+                unminimizeAndRaise(ws[next], app: app)
                 return
             }
 
@@ -100,9 +114,10 @@ enum WindowSwitcher {
             }
         }
 
-        // 非アクティブ時: activate() に委ねる
+        // 非アクティブ時: activate() に委ね、巡回インデックスをリセットする
         // - macOS が「最後に使用した Space のウィンドウ」へ自動切り替えする
         // - kAXRaiseAction は Space をまたがないため外部ディスプレイのウィンドウに届かない
+        cycleIndex[app.processIdentifier] = 0
         if !app.activate(options: .activateIgnoringOtherApps),
            let bundleURL = app.bundleURL {
             let config = NSWorkspace.OpenConfiguration()

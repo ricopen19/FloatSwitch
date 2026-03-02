@@ -69,28 +69,36 @@ private final class FirstMouseHostingView<Content: View>: NSHostingView<Content>
     }
 
     override func rightMouseDown(with event: NSEvent) {
-        guard let menu = menu(for: event), !menu.items.isEmpty, let window else {
+        guard let menu = menu(for: event), !menu.items.isEmpty else {
             super.rightMouseDown(with: event)
             return
         }
 
-        // バー上端の直上にメニューを展開する（Dock の後ろに隠れるのを防ぐ）
-        // NSScreen の座標系（左下原点）で計算し、外部モニターでも正しく動作させる
-        let windowOriginInScreen = window.convertPoint(toScreen: .zero)
-        let clickXInWindow = event.locationInWindow.x
-        let screenX = windowOriginInScreen.x + clickXInWindow
-        let barTopY = windowOriginInScreen.y + window.frame.height
+        // NSMenu.popUpContextMenu はイベントの座標を元に macOS が適切な位置を計算する。
+        // popUp(positioning:at:in:nil) はスクリーン座標の解釈が外部モニターでズレるため、
+        // こちらを使うことで全モニターで正しく動作する。
+        //
+        // ただし Dock 直上にバーがある場合、メニューが Dock の背後に描画されることがある。
+        // その対策として synthesizedEvent の locationInWindow を上端座標に差し替えて渡す。
+        guard let window else {
+            NSMenu.popUpContextMenu(menu, with: event, for: self)
+            return
+        }
 
-        // メニューが画面外にはみ出さないようクランプ
-        let targetScreen = NSScreen.screens.first(where: { $0.frame.contains(NSPoint(x: screenX, y: barTopY)) })
-            ?? NSScreen.main
-        let clampedX = targetScreen.map { min(screenX, $0.visibleFrame.maxX - 10) } ?? screenX
+        let barTopYInWindow = window.frame.height   // ウィンドウ座標系でのバー上端
+        let adjustedLocation = NSPoint(x: event.locationInWindow.x, y: barTopYInWindow + 4)
 
-        menu.popUp(
-            positioning: menu.items.last,
-            at: NSPoint(x: clampedX, y: barTopY + 4),
-            in: nil
-        )
+        // CGEvent でウィンドウ座標を差し替えた合成イベントを作る
+        if let cgEvent = event.cgEvent?.copy() {
+            let screenPoint = window.convertPoint(toScreen: adjustedLocation)
+            cgEvent.location = screenPoint
+            if let syntheticEvent = NSEvent(cgEvent: cgEvent) {
+                NSMenu.popUpContextMenu(menu, with: syntheticEvent, for: self)
+                return
+            }
+        }
+
+        NSMenu.popUpContextMenu(menu, with: event, for: self)
     }
 }
 
