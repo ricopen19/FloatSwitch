@@ -35,6 +35,12 @@ struct FloatingBarView: View {
                 // 上段: アプリ
                 MagnifyingIconRow(items: viewModel.apps, iconSize: viewModel.iconSize) { item in
                     handleTap(item)
+                } onHide: { item in
+                    if case .app(let app) = item.kind, let bid = app.bundleIdentifier {
+                        viewModel.customization.hide(bundleID: bid)
+                    }
+                } onReorder: { fromBundleID, toBundleID in
+                    viewModel.reorderApps(fromBundleID: fromBundleID, toBundleID: toBundleID)
                 }
 
                 if !viewModel.folders.isEmpty {
@@ -71,6 +77,16 @@ struct FloatingBarView: View {
                     Label("常駐アプリを表示", systemImage: "checkmark")
                 } else {
                     Text("常駐アプリを表示")
+                }
+            }
+
+            if !viewModel.customization.config.hiddenBundleIDs.isEmpty {
+                Menu("隠したアプリを管理...") {
+                    ForEach(viewModel.customization.config.hiddenBundleIDs, id: \.self) { bid in
+                        Button("再表示: \(bid)") {
+                            viewModel.customization.show(bundleID: bid)
+                        }
+                    }
                 }
             }
 

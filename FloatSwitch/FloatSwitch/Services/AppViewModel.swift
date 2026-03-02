@@ -4,6 +4,7 @@
 //
 
 import AppKit
+import SwiftUI
 
 // MARK: - BarSize
 
@@ -38,6 +39,7 @@ enum BarSize: String, CaseIterable {
 final class AppViewModel {
     let appMonitor = AppMonitor()
     let finderMonitor = FinderMonitor()
+    let customization = AppCustomization()
 
     var barSize: BarSize = .medium
 
@@ -51,7 +53,8 @@ final class AppViewModel {
         // CGWindowList で layer 0...3 のウィンドウを持つ PID を一括取得（権限不要）
         let windowedPIDs = AppMonitor.pidsWithWindows()
 
-        return appMonitor.apps.filter { item in
+        // 通常の表示条件でフィルタ
+        let visible = appMonitor.apps.filter { item in
             guard case .app(let runningApp) = item.kind else { return true }
 
             // Dock の丸が付くのは .regular のみ。 .accessory などは常に非表示。
@@ -62,6 +65,42 @@ final class AppViewModel {
             // .regular: ウィンドウ（layer 0...3）を持つなら常に表示、なければ toggle 次第
             return windowedPIDs.contains(runningApp.processIdentifier) || showResidentApps
         }
+
+        // 隠しリストに含まれる bundleID を除外
+        let hidden = customization.config.hiddenBundleIDs
+        let filtered = visible.filter { item in
+            guard case .app(let app) = item.kind else { return true }
+            return !(hidden.contains(app.bundleIdentifier ?? ""))
+        }
+
+        // orderedBundleIDs の順でソート（未指定は末尾に起動順で追加）
+        let ordered = customization.config.orderedBundleIDs
+        return filtered.sorted { aItem, bItem in
+            guard case .app(let appA) = aItem.kind,
+                  case .app(let appB) = bItem.kind else { return false }
+            let iA = ordered.firstIndex(of: appA.bundleIdentifier ?? "") ?? Int.max
+            let iB = ordered.firstIndex(of: appB.bundleIdentifier ?? "") ?? Int.max
+            return iA < iB
+        }
+    }
+
+    // MARK: - Reorder
+
+    /// ドラッグ並び替え後に表示順序を永続化する
+    ///
+    /// - Parameters:
+    ///   - fromBundleID: ドラッグ元の bundleID
+    ///   - toBundleID: ドロップ先の bundleID
+    func reorderApps(fromBundleID: String, toBundleID: String) {
+        var bundleIDs = apps.compactMap { item -> String? in
+            guard case .app(let app) = item.kind else { return nil }
+            return app.bundleIdentifier
+        }
+        guard let fromIdx = bundleIDs.firstIndex(of: fromBundleID),
+              let toIdx = bundleIDs.firstIndex(of: toBundleID),
+              fromIdx != toIdx else { return }
+        bundleIDs.move(fromOffsets: IndexSet(integer: fromIdx), toOffset: toIdx > fromIdx ? toIdx + 1 : toIdx)
+        customization.updateOrder(bundleIDs: bundleIDs)
     }
 
     // MARK: - Private

@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Dock 風の hover 拡大エフェクト付きアイコン列
 ///
@@ -11,10 +12,14 @@ import SwiftUI
 /// - 各アイテムのレイアウトフレームは固定（HStack が揺れない）
 /// - `scaleEffect(anchor: .bottom)` でアイコンが上方向に拡大
 /// - `onTap` コールバックでタップ時の動作を外部に委譲
+/// - `onHide` コールバックでアイコン右クリック→「バーから隠す」の動作を外部に委譲
+/// - `onReorder` コールバックでドラッグ並び替え後の順序更新を外部に委譲
 struct MagnifyingIconRow: View {
     let items: [AppItem]
     let iconSize: CGFloat
-    var onTap: (AppItem) -> Void = { _ in }  // デフォルトは no-op
+    var onTap: (AppItem) -> Void = { _ in }
+    var onHide: (AppItem) -> Void = { _ in }
+    var onReorder: (String, String) -> Void = { _, _ in }  // (fromBundleID, toBundleID)
 
     // swiftlint:disable implicit_optional_initialization
     @State private var hoverX: CGFloat? = nil  // @State の初期値として nil が必要
@@ -51,7 +56,12 @@ struct MagnifyingIconRow: View {
     // MARK: - Private
 
     private func iconView(item: AppItem, scale: CGFloat) -> some View {
-        VStack(spacing: 2) {
+        let bundleID: String = {
+            if case .app(let app) = item.kind { return app.bundleIdentifier ?? "" }
+            return ""
+        }()
+
+        return VStack(spacing: 2) {
             Group {
                 if let icon = item.icon {
                     Image(nsImage: icon)
@@ -74,6 +84,21 @@ struct MagnifyingIconRow: View {
         .scaleEffect(scale, anchor: .bottom)
         .onTapGesture { onTap(item) }
         .contextMenu { windowContextMenu(for: item) }
+        .onDrag {
+            NSItemProvider(object: bundleID as NSString)
+        }
+        .onDrop(of: [UTType.plainText], isTargeted: nil) { providers in
+            guard !bundleID.isEmpty else { return false }
+            providers.first?.loadObject(ofClass: NSString.self) { obj, _ in
+                guard let fromBundleID = obj as? String,
+                      !fromBundleID.isEmpty,
+                      fromBundleID != bundleID else { return }
+                DispatchQueue.main.async {
+                    onReorder(fromBundleID, bundleID)
+                }
+            }
+            return true
+        }
     }
 
     /// 複数ウィンドウを持つアプリのとき右クリックメニューにウィンドウ一覧を表示する
@@ -101,7 +126,10 @@ struct MagnifyingIconRow: View {
                         }
                     }
                 }
+                Divider()
             }
+
+            Button("バーから隠す") { onHide(item) }
         }
     }
 
