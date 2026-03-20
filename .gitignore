@@ -20,3 +20,7 @@ build/
 
 # Claude Code worktrees
 .claude/worktrees/
+
+# docs/ 内の開発用ドキュメント（ランディングページ用アセットのみ追跡）
+docs/*.md
+docs/ui-mockup*.html
