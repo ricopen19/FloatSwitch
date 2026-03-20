@@ -1,6 +1,6 @@
 # FloatSwitch アーキテクチャ決定記録
 
-最終更新: 2026-02-27
+最終更新: 2026-03-06
 
 ---
 
@@ -158,20 +158,36 @@ for window in windows {
 
 ---
 
-## 4. ディレクトリ構成（フェーズ3時点）
+## 4. 設定の永続化
+
+| 設定 | 保存先 | 方式 |
+|------|--------|------|
+| ホットキー（修飾キー） | UserDefaults `hotkeySettings_v1` | JSON (Codable) |
+| 外観（向き・サイズ・グラデーション等） | UserDefaults `appAppearance_v1` | JSON (Codable) |
+| 非表示アプリ・表示順序 | `~/.config/floatswitch/hidden_apps.json` | JSON ファイル |
+
+---
+
+## 5. ディレクトリ構成
 
 ```
 FloatSwitch/FloatSwitch/
 ├── FloatSwitchApp.swift       # @main、AppDelegate 接続
-├── AppDelegate.swift           # NSPanel 生成・Monitor 初期化
+├── AppDelegate.swift           # NSPanel 生成・Monitor 初期化・設定画面
 ├── FloatingPanel.swift         # NSPanel サブクラス
 ├── Models/
-│   └── AppItem.swift           # アプリ・フォルダのデータモデル（フェーズ3で追加）
+│   └── AppItem.swift           # アプリ・フォルダのデータモデル
 ├── Services/
-│   ├── AppMonitor.swift        # NSWorkspace 通知でアプリ監視（フェーズ3で追加）
-│   └── FinderMonitor.swift     # ScriptingBridge + ポーリングで Finder 監視（フェーズ3で追加）
+│   ├── AppMonitor.swift        # NSWorkspace 通知でアプリ監視
+│   ├── AppViewModel.swift      # 状態管理（@Observable）・外観設定永続化
+│   ├── AppCustomization.swift  # 非表示・並び順の管理
+│   ├── HotkeySettings.swift    # ホットキー設定の永続化
+│   └── HotkeyService.swift     # グローバルホットキー監視
 ├── Views/
-│   └── FloatingBarView.swift   # SwiftUI ルートビュー
+│   ├── FloatingBarView.swift   # フローティングバーのルートビュー
+│   ├── FloatingBarShape.swift  # 湾曲シェイプ
+│   ├── MagnifyingIconRow.swift # Dock 風拡大エフェクト付きアイコン列
+│   └── SettingsView.swift      # 設定画面（ホットキー・外観）
 └── Utilities/
 ```
 

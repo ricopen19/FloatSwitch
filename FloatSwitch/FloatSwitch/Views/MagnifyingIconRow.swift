@@ -8,107 +8,276 @@ import UniformTypeIdentifiers
 
 /// Dock 風の hover 拡大エフェクト付きアイコン列
 ///
-/// - `onContinuousHover` でマウス X 座標を取得
-/// - 各アイテムのレイアウトフレームは固定（HStack が揺れない）
-/// - `scaleEffect(anchor: .bottom)` でアイコンが上方向に拡大
-/// - `onTap` コールバックでタップ時の動作を外部に委譲
-/// - `onHide` コールバックでアイコン右クリック→「バーから隠す」の動作を外部に委譲
-/// - `onReorder` コールバックでドラッグ並び替え後の順序更新を外部に委譲
+/// - 最大 `maxVisibleCount` 個を表示し、超過分は「+N」ボタンでポップオーバー表示
+/// - アクティブドット（ウィンドウを持つアプリ）表示
+/// - ラベルはアイコン個別ホバー時のみ表示
 struct MagnifyingIconRow: View {
     let items: [AppItem]
     let iconSize: CGFloat
+    var orientation: BarOrientation = .horizontal
+    var showNumbers: Bool = false
+    var maxVisibleCount: Int = 9
+    var gradientPreset: GradientPreset = .none
+    var gradientIntensity: Double = 0.4
     var onTap: (AppItem) -> Void = { _ in }
     var onHide: (AppItem) -> Void = { _ in }
-    var onReorder: (String, String) -> Void = { _, _ in }  // (fromBundleID, toBundleID)
+    var onReorder: (String, String) -> Void = { _, _ in }
 
+    @State private var showOverflow = false
+    @State private var isPopoverHovered = false
+    /// ホバー中のアイテム ID（ラベル表示用）
     // swiftlint:disable implicit_optional_initialization
-    @State private var hoverX: CGFloat? = nil  // @State の初期値として nil が必要
+    @State private var hoveredItemID: String? = nil
     // swiftlint:enable implicit_optional_initialization
 
-    private let itemSpacing: CGFloat = 6
-    private let horizontalPadding: CGFloat = 8
-    private let maxScale: CGFloat = 1.8
+    /// アイコン間スペース（縦型は広め）
+    private var itemSpacing: CGFloat { isVertical ? 12 : 8 }
+    private let edgePadding: CGFloat = 4
 
-    // HStack 内の各アイテムが占める固定フレーム幅
-    private var itemFrameWidth: CGFloat { iconSize + 16 }
+    private var itemFrameWidth: CGFloat { iconSize + 4 }
 
-    // ホバー効果が届く距離（px）
-    private var effectRadius: CGFloat { iconSize * 2.8 }
-
-    var body: some View {
-        HStack(alignment: .bottom, spacing: itemSpacing) {
-            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                iconView(item: item, scale: magnification(for: index))
-            }
-        }
-        .padding(.horizontal, horizontalPadding)
-        .onContinuousHover { phase in
-            switch phase {
-            case .active(let location):
-                hoverX = location.x
-            case .ended:
-                hoverX = nil
-            }
-        }
-        .animation(.spring(duration: 0.18, bounce: 0.2), value: hoverX)
+    /// 表示するアイテム（最大 maxVisibleCount）
+    private var visibleItems: [AppItem] {
+        Array(items.prefix(maxVisibleCount))
     }
 
-    // MARK: - Private
+    /// オーバーフロー分のアイテム
+    private var overflowItems: [AppItem] {
+        items.count > maxVisibleCount ? Array(items.dropFirst(maxVisibleCount)) : []
+    }
 
-    private func iconView(item: AppItem, scale: CGFloat) -> some View {
+    private var isVertical: Bool { orientation == .vertical }
+
+
+    var body: some View {
+        Group {
+            if isVertical {
+                verticalBody
+            } else {
+                horizontalBody
+            }
+        }
+    }
+
+    // MARK: - Horizontal Layout
+
+    private var horizontalBody: some View {
+        HStack(alignment: .bottom, spacing: itemSpacing) {
+            ForEach(Array(visibleItems.enumerated()), id: \.element.id) { index, item in
+                iconView(item: item, index: index)
+            }
+
+            if !overflowItems.isEmpty {
+                overflowButton
+            }
+        }
+        .padding(.horizontal, edgePadding)
+    }
+
+    // MARK: - Vertical Layout
+
+    private var verticalBody: some View {
+        VStack(spacing: itemSpacing) {
+            ForEach(Array(visibleItems.enumerated()), id: \.element.id) { index, item in
+                iconView(item: item, index: index)
+            }
+
+            if !overflowItems.isEmpty {
+                overflowButton
+            }
+        }
+        .padding(.vertical, edgePadding)
+    }
+
+    // MARK: - Overflow
+
+    private var overflowButton: some View {
+        VStack(spacing: 2) {
+            ZStack {
+                RoundedRectangle(cornerRadius: iconSize * 0.2)
+                    .fill(.thinMaterial)
+                    .overlay {
+                        if let (start, end) = gradientPreset.colors {
+                            RoundedRectangle(cornerRadius: iconSize * 0.2)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [start, end],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .opacity(0.15 + gradientIntensity * 0.7)
+                        }
+                    }
+                    .overlay(
+                        RoundedRectangle(cornerRadius: iconSize * 0.2)
+                            .strokeBorder(.quaternary, lineWidth: 0.5)
+                    )
+                    .frame(width: iconSize, height: iconSize)
+                Text("+\(overflowItems.count)")
+                    .font(.system(size: iconSize * 0.38, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
+            Text("その他")
+                .font(.system(size: max(8, iconSize * 0.28)))
+                .lineLimit(1)
+                .frame(width: itemFrameWidth)
+                .opacity(0) // スペース確保のみ（ホバーなし時は非表示）
+        }
+        .frame(width: itemFrameWidth, alignment: .center)
+        .onHover { hovering in
+            if hovering {
+                showOverflow = true
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    if !isPopoverHovered { showOverflow = false }
+                }
+            }
+        }
+        .onTapGesture { showOverflow.toggle() }
+        .popover(isPresented: $showOverflow, arrowEdge: isVertical ? .trailing : .bottom) {
+            overflowGrid
+                .background {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(.thinMaterial)
+                        .overlay {
+                            if let (start, end) = gradientPreset.colors {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [start, end],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .opacity(0.15 + gradientIntensity * 0.7)
+                            }
+                        }
+                }
+                .onHover { hovering in
+                    isPopoverHovered = hovering
+                    if !hovering {
+                        showOverflow = false
+                    }
+                }
+        }
+    }
+
+    private var overflowGrid: some View {
+        let columns = Array(repeating: GridItem(.fixed(iconSize + 20), spacing: 8), count: 3)
+        return LazyVGrid(columns: columns, spacing: 10) {
+            ForEach(overflowItems) { item in
+                VStack(spacing: 3) {
+                    if let icon = item.icon {
+                        Image(nsImage: icon)
+                            .resizable()
+                            .interpolation(.high)
+                            .frame(width: iconSize, height: iconSize)
+                    } else {
+                        Image(systemName: "app.dashed")
+                            .font(.system(size: iconSize * 0.7))
+                            .frame(width: iconSize, height: iconSize)
+                    }
+                    Text(item.name)
+                        .font(.system(size: max(8, iconSize * 0.28)))
+                        .lineLimit(1)
+                        .frame(width: iconSize + 16)
+                }
+                .onTapGesture {
+                    onTap(item)
+                    showOverflow = false
+                }
+                .contextMenu {
+                    if case .app = item.kind {
+                        Button("バーから隠す") { onHide(item) }
+                    }
+                }
+            }
+        }
+        .padding(14)
+    }
+
+    // MARK: - Icon View
+
+    private func iconView(item: AppItem, index: Int) -> some View {
         let bundleID: String = {
             if case .app(let app) = item.kind { return app.bundleIdentifier ?? "" }
             return ""
         }()
 
-        return VStack(spacing: 2) {
-            Group {
-                if let icon = item.icon {
-                    Image(nsImage: icon)
-                        .resizable()
-                        .interpolation(.high)
-                        .frame(width: iconSize, height: iconSize)
-                } else {
-                    Image(systemName: "app.dashed")
-                        .font(.system(size: iconSize * 0.7))
-                        .frame(width: iconSize, height: iconSize)
-                }
+        let badgeNumber = (showNumbers && index < 9) ? index + 1 : nil
+        let isItemHovered = hoveredItemID == item.id
+
+        return iconContent(item: item, badgeNumber: badgeNumber, isItemHovered: isItemHovered)
+            .onHover { hovering in
+                hoveredItemID = hovering ? item.id : nil
             }
+            .contextMenu { windowContextMenu(for: item) }
+            .onDrag {
+                NSItemProvider(object: bundleID as NSString)
+            }
+            .onDrop(of: [UTType.plainText], isTargeted: nil) { providers in
+                guard !bundleID.isEmpty else { return false }
+                providers.first?.loadObject(ofClass: NSString.self) { obj, _ in
+                    guard let fromBundleID = obj as? String,
+                          !fromBundleID.isEmpty,
+                          fromBundleID != bundleID else { return }
+                    DispatchQueue.main.async {
+                        onReorder(fromBundleID, bundleID)
+                    }
+                }
+                return true
+            }
+    }
+
+    /// アイコン + ラベル（横・縦共通: アイコン下にラベル表示）
+    private func iconContent(item: AppItem, badgeNumber: Int?, isItemHovered: Bool) -> some View {
+        VStack(spacing: 2) {
+            iconImage(item: item, badgeNumber: badgeNumber)
+                .contentShape(Rectangle())
+                .onTapGesture { onTap(item) }
             Text(item.name)
                 .font(.system(size: max(8, iconSize * 0.28)))
                 .lineLimit(1)
                 .frame(width: itemFrameWidth)
+                .opacity(isItemHovered ? 1 : 0)
+                .allowsHitTesting(false)
         }
-        // レイアウトフレームは固定（scaleEffect は視覚のみ、layout に影響しない）
         .frame(width: itemFrameWidth, alignment: .center)
-        .scaleEffect(scale, anchor: .bottom)
-        .onTapGesture { onTap(item) }
-        .contextMenu { windowContextMenu(for: item) }
-        .onDrag {
-            NSItemProvider(object: bundleID as NSString)
-        }
-        .onDrop(of: [UTType.plainText], isTargeted: nil) { providers in
-            guard !bundleID.isEmpty else { return false }
-            providers.first?.loadObject(ofClass: NSString.self) { obj, _ in
-                guard let fromBundleID = obj as? String,
-                      !fromBundleID.isEmpty,
-                      fromBundleID != bundleID else { return }
-                DispatchQueue.main.async {
-                    onReorder(fromBundleID, bundleID)
-                }
+        .animation(.easeOut(duration: 0.12), value: isItemHovered)
+    }
+
+    /// アイコン画像 + バッジ番号
+    private func iconImage(item: AppItem, badgeNumber: Int?) -> some View {
+        Group {
+            if let icon = item.icon {
+                Image(nsImage: icon)
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: iconSize, height: iconSize)
+            } else {
+                Image(systemName: "app.dashed")
+                    .font(.system(size: iconSize * 0.7))
+                    .frame(width: iconSize, height: iconSize)
             }
-            return true
+        }
+        .overlay(alignment: .topTrailing) {
+            if let num = badgeNumber {
+                Text("\(num)")
+                    .font(.system(size: max(8, iconSize * 0.3), weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 3)
+                    .padding(.vertical, 1)
+                    .background(.secondary, in: RoundedRectangle(cornerRadius: 3))
+                    .offset(x: 3, y: -3)
+            }
         }
     }
 
     /// 複数ウィンドウを持つアプリのとき右クリックメニューにウィンドウ一覧を表示する
-    ///
-    /// AX 権限がある場合のみウィンドウ一覧を表示する。
-    /// 別 Space のウィンドウは AX から取得できないため、ユーザーは Cmd+\` で対応する。
     @ViewBuilder
     private func windowContextMenu(for item: AppItem) -> some View {
         if case .app(let app) = item.kind {
-            // タイトルが空の内部ウィンドウ（Chrome の拡張機能 BG ページ等）を除外する
             let ws = WindowSwitcher.windows(for: app.processIdentifier)
                 .filter { !$0.title.isEmpty }
             if ws.count > 1 {
@@ -134,20 +303,4 @@ struct MagnifyingIconRow: View {
         }
     }
 
-
-
-
-    /// index 番目のアイテムの拡大率を返す（距離に応じた二次減衰）
-    private func magnification(for index: Int) -> CGFloat {
-        guard let hoverX else { return 1.0 }
-        // 各アイテムの中心 X（固定フレーム幅 + spacing ベース）
-        let itemCenterX = horizontalPadding
-            + CGFloat(index) * (itemFrameWidth + itemSpacing)
-            + itemFrameWidth / 2
-        let distance = abs(hoverX - itemCenterX)
-        guard distance < effectRadius else { return 1.0 }
-        let factor = 1.0 - distance / effectRadius
-        // 二次減衰で Dock 風の滑らかな拡大曲線を再現
-        return 1.0 + (maxScale - 1.0) * factor * factor
-    }
 }

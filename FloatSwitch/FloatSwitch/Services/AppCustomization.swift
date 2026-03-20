@@ -3,6 +3,7 @@
 //  FloatSwitch
 //
 
+import AppKit
 import Foundation
 
 /// アプリの非表示・表示順序をユーザー設定として管理するクラス
@@ -52,6 +53,22 @@ final class AppCustomization {
     func updateOrder(bundleIDs: [String]) {
         config.orderedBundleIDs = bundleIDs
         save()
+    }
+
+    /// bundleID からアプリの表示名を返す
+    func displayName(for bundleID: String) -> String {
+        // 起動中のアプリから探す
+        if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == bundleID }),
+           let name = app.localizedName {
+            return name
+        }
+        // インストール済みアプリのパスから探す
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID),
+           let bundle = Bundle(url: url),
+           let name = bundle.infoDictionary?["CFBundleName"] as? String ?? bundle.infoDictionary?["CFBundleDisplayName"] as? String {
+            return name
+        }
+        return bundleID
     }
 
     // MARK: - Private

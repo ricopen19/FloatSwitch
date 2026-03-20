@@ -10,8 +10,11 @@ import AppKit
 final class AppMonitor {
     private(set) var apps: [AppItem] = []
 
-    /// 0.5 秒ごとに増加するカウンタ。AppViewModel.apps のウィンドウ判定を定期再評価させるために使う
+    /// ウィンドウ状態が実際に変化した場合のみ増加するカウンタ。AppViewModel.apps の再評価トリガー。
     private(set) var windowCheckVersion: Int = 0
+
+    /// 直近の CGWindowListCopyWindowInfo 結果をキャッシュ。AppViewModel から直接参照する。
+    private(set) var cachedWindowPIDs: Set<pid_t> = []
 
     private var observers: [NSObjectProtocol] = []
     private var windowCheckTimer: Timer?
@@ -138,8 +141,16 @@ final class AppMonitor {
     // MARK: - Private
 
     private func startWindowCheckTimer() {
-        windowCheckTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            self?.windowCheckVersion += 1
+        // 初回キャッシュ
+        cachedWindowPIDs = Self.pidsWithWindows()
+
+        windowCheckTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            let latest = Self.pidsWithWindows()
+            if latest != self.cachedWindowPIDs {
+                self.cachedWindowPIDs = latest
+                self.windowCheckVersion += 1
+            }
         }
     }
 }

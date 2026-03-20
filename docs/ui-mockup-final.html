@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FloatSwitch — 統合デザイン案（Glass Island + Dots）</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 26px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    letter-spacing: -0.5px;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: #888;
+    font-size: 13px;
+    margin-bottom: 48px;
+  }
+
+  .section {
+    max-width: 900px;
+    margin: 0 auto 56px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  .section h2 { font-size: 17px; font-weight: 600; }
+
+  .badge {
+    font-size: 10px;
+    background: rgba(99, 102, 241, 0.25);
+    color: #a5b4fc;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: 500;
+  }
+
+  .section p {
+    color: #999;
+    font-size: 13px;
+    margin-bottom: 18px;
+    line-height: 1.6;
+  }
+
+  /* ── Stage ── */
+  .bar-stage {
+    background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 100%);
+    border-radius: 16px;
+    padding: 48px 32px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid rgba(255,255,255,0.06);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .bar-stage::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 120%, rgba(99,102,241,0.06) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .bar-stage .hint {
+    position: absolute;
+    bottom: 10px;
+    right: 14px;
+    font-size: 11px;
+    color: #555;
+  }
+
+  .side-by-side {
+    display: flex;
+    gap: 32px;
+    align-items: stretch;
+  }
+
+  .side-by-side .bar-stage {
+    flex: 1;
+  }
+
+  .side-by-side .bar-stage.vertical-stage {
+    flex: 0;
+    padding: 48px 24px;
+  }
+
+  /* ══════════════════════════════════
+     横表示 — Glass Island + Dots
+     ══════════════════════════════════ */
+  .h-bar {
+    /* glass base */
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    border-radius: 24px;
+    padding: 10px 16px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    /* glass highlight */
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.18),
+      inset 0 -1px 0 rgba(255,255,255,0.03),
+      0 6px 28px rgba(0,0,0,0.45);
+    /* idle state */
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    cursor: default;
+    position: relative;
+    opacity: 0.5;
+    filter: saturate(0.3) brightness(1.05);
+  }
+
+  /* glass sheen */
+  .h-bar::before {
+    content: '';
+    position: absolute;
+    top: 1px; left: 1px; right: 1px;
+    height: 44%;
+    border-radius: 23px 23px 50% 50%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.10) 0%, transparent 100%);
+    pointer-events: none;
+  }
+
+  .h-bar:hover {
+    opacity: 1;
+    filter: saturate(1) brightness(1);
+    padding: 14px 22px 16px;
+    gap: 12px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.22),
+      inset 0 -1px 0 rgba(255,255,255,0.05),
+      0 10px 40px rgba(0,0,0,0.5),
+      0 0 30px rgba(99,102,241,0.08);
+  }
+
+  /* slot */
+  .h-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    transition: transform 0.2s ease;
+    cursor: default;
+  }
+
+  .h-slot:hover {
+    transform: scale(1.3) translateY(-4px);
+  }
+
+  /* icon */
+  .h-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    flex-shrink: 0;
+  }
+
+  .h-bar:hover .h-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 22px;
+  }
+
+  /* dot indicator */
+  .h-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: transparent;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+  }
+
+  .h-dot.active {
+    background: #818cf8;
+    box-shadow: 0 0 6px rgba(99,102,241,0.6);
+  }
+
+  .h-slot:hover .h-dot.active {
+    width: 5px;
+    height: 5px;
+    box-shadow: 0 0 12px rgba(99,102,241,0.9);
+  }
+
+  /* label — hover only */
+  .h-label {
+    font-size: 0;
+    opacity: 0;
+    max-height: 0;
+    transition: all 0.2s ease;
+    color: #ccc;
+    white-space: nowrap;
+  }
+
+  .h-bar:hover .h-slot:hover .h-label {
+    font-size: 9px;
+    opacity: 1;
+    max-height: 16px;
+  }
+
+  /* divider */
+  .h-divider {
+    width: 1px;
+    height: 24px;
+    background: rgba(255,255,255,0.10);
+    transition: height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    flex-shrink: 0;
+  }
+
+  .h-bar:hover .h-divider {
+    height: 32px;
+  }
+
+  /* folders */
+  .h-folders {
+    display: flex;
+    gap: 6px;
+  }
+
+  .h-folder {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    flex-shrink: 0;
+  }
+
+  .h-folder:hover {
+    transform: scale(1.15);
+  }
+
+  .h-bar:hover .h-folder {
+    width: 30px;
+    height: 30px;
+    font-size: 17px;
+  }
+
+  /* ══════════════════════════════════
+     縦表示 — Glass Island + Dots (Vertical)
+     ══════════════════════════════════ */
+  .v-bar {
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    border-radius: 24px;
+    padding: 14px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.18),
+      inset 0 -1px 0 rgba(255,255,255,0.03),
+      0 6px 28px rgba(0,0,0,0.45);
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    cursor: default;
+    position: relative;
+    opacity: 0.5;
+    filter: saturate(0.3) brightness(1.05);
+  }
+
+  .v-bar::before {
+    content: '';
+    position: absolute;
+    top: 1px; left: 1px; bottom: 1px;
+    width: 44%;
+    border-radius: 23px 50% 50% 23px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.08) 0%, transparent 100%);
+    pointer-events: none;
+  }
+
+  .v-bar:hover {
+    opacity: 1;
+    filter: saturate(1) brightness(1);
+    padding: 18px 14px;
+    gap: 10px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.22),
+      inset 0 -1px 0 rgba(255,255,255,0.05),
+      0 10px 40px rgba(0,0,0,0.5),
+      0 0 30px rgba(99,102,241,0.08);
+  }
+
+  /* slot */
+  .v-slot {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    transition: transform 0.2s ease;
+    cursor: default;
+    position: relative;
+  }
+
+  .v-slot:hover {
+    transform: scale(1.25) translateX(-6px);
+  }
+
+  /* icon */
+  .v-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    flex-shrink: 0;
+  }
+
+  .v-bar:hover .v-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
+  }
+
+  /* dot — right side */
+  .v-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: transparent;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+    position: absolute;
+    right: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .v-dot.active {
+    background: #818cf8;
+    box-shadow: 0 0 6px rgba(99,102,241,0.6);
+  }
+
+  .v-slot:hover .v-dot.active {
+    width: 5px;
+    height: 5px;
+    box-shadow: 0 0 12px rgba(99,102,241,0.9);
+  }
+
+  /* label — appears on hover to the left */
+  .v-label {
+    font-size: 0;
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    transition: all 0.2s ease;
+    color: #ccc;
+    white-space: nowrap;
+    position: absolute;
+    left: -6px;
+    transform: translateX(-100%);
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 0;
+    border-radius: 6px;
+  }
+
+  .v-slot:hover .v-label {
+    font-size: 10px;
+    opacity: 1;
+    max-width: 80px;
+    padding: 3px 8px;
+  }
+
+  /* divider */
+  .v-divider {
+    height: 1px;
+    width: 24px;
+    background: rgba(255,255,255,0.10);
+    transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    flex-shrink: 0;
+  }
+
+  .v-bar:hover .v-divider {
+    width: 32px;
+  }
+
+  /* folders */
+  .v-folder {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    flex-shrink: 0;
+  }
+
+  .v-folder:hover {
+    transform: scale(1.15);
+  }
+
+  .v-bar:hover .v-folder {
+    width: 30px;
+    height: 30px;
+    font-size: 17px;
+  }
+
+  /* ══════════════════════════════════
+     横表示バリエーション: グラデーション適用例
+     ══════════════════════════════════ */
+  .h-bar.with-gradient {
+    border-color: rgba(139, 92, 246, 0.15);
+  }
+
+  .h-bar.with-gradient:hover {
+    border-color: rgba(139, 92, 246, 0.25);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.22),
+      inset 0 -1px 0 rgba(255,255,255,0.05),
+      0 10px 40px rgba(0,0,0,0.5),
+      0 0 30px rgba(139,92,246,0.12);
+  }
+
+  .gradient-overlay {
+    position: absolute;
+    inset: 0;
+    border-radius: 24px;
+    background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(236,72,153,0.08));
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+  }
+
+  .h-bar.with-gradient:hover .gradient-overlay {
+    opacity: 1;
+  }
+
+  .h-bar.with-gradient .h-dot.active {
+    background: #c084fc;
+    box-shadow: 0 0 6px rgba(192,132,252,0.6);
+  }
+
+  .h-bar.with-gradient .h-slot:hover .h-dot.active {
+    box-shadow: 0 0 12px rgba(192,132,252,0.9);
+  }
+
+  /* ══════════════════════════════════
+     非ホバー状態の比較
+     ══════════════════════════════════ */
+  .state-compare {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .state-box {
+    text-align: center;
+  }
+
+  .state-box .state-label {
+    font-size: 11px;
+    color: #666;
+    margin-bottom: 12px;
+  }
+
+  .h-bar.frozen-idle {
+    opacity: 0.5;
+    filter: saturate(0.3) brightness(1.05);
+    pointer-events: none;
+  }
+
+  .h-bar.frozen-active {
+    opacity: 1;
+    filter: saturate(1) brightness(1);
+    padding: 14px 22px 16px;
+    gap: 12px;
+    pointer-events: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.22),
+      inset 0 -1px 0 rgba(255,255,255,0.05),
+      0 10px 40px rgba(0,0,0,0.5),
+      0 0 30px rgba(99,102,241,0.08);
+  }
+
+  .h-bar.frozen-active .h-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 22px;
+  }
+
+  .h-bar.frozen-active .h-divider {
+    height: 32px;
+  }
+
+  .h-bar.frozen-active .h-folder {
+    width: 30px;
+    height: 30px;
+    font-size: 17px;
+  }
+
+  /* ══════════════════════════════════
+     共通ユーティリティ
+     ══════════════════════════════════ */
+  .note {
+    text-align: center;
+    color: #555;
+    font-size: 12px;
+    margin-top: 60px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .feature-list {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+    margin-bottom: 20px;
+  }
+
+  .feature-tag {
+    font-size: 11px;
+    background: rgba(255,255,255,0.06);
+    color: #aaa;
+    padding: 3px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+</style>
+</head>
+<body>
+
+<h1>Glass Island + Dots</h1>
+<p class="subtitle">案1（ガラス質感）+ 案2（Island 膨張）+ 案5（アクティブドット）の統合デザイン</p>
+
+<!-- ── 特徴 ── -->
+<div class="section">
+  <div class="feature-list">
+    <span class="feature-tag">ガラス背景 + 上辺ハイライト</span>
+    <span class="feature-tag">ホバーで膨張（スプリング）</span>
+    <span class="feature-tag">アクティブドット</span>
+    <span class="feature-tag">pill 形状（強角丸）</span>
+    <span class="feature-tag">ホバー時のみラベル表示</span>
+    <span class="feature-tag">くすみ→鮮明 復帰</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ -->
+<!-- 横表示                            -->
+<!-- ══════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <h2>横表示</h2>
+    <span class="badge">メイン</span>
+  </div>
+  <p>上辺にガラスハイライト。ホバーで pill が膨張し、アイコンが大きくなる。フォルダは縦線セパレータで同一バー内に統合。</p>
+  <div class="bar-stage">
+    <div class="h-bar">
+      <div class="h-slot">
+        <div class="h-icon">🌐</div>
+        <div class="h-dot active"></div>
+        <span class="h-label">Safari</span>
+      </div>
+      <div class="h-slot">
+        <div class="h-icon">💬</div>
+        <div class="h-dot active"></div>
+        <span class="h-label">Slack</span>
+      </div>
+      <div class="h-slot">
+        <div class="h-icon">📝</div>
+        <div class="h-dot active"></div>
+        <span class="h-label">Code</span>
+      </div>
+      <div class="h-slot">
+        <div class="h-icon">🎵</div>
+        <div class="h-dot"></div>
+        <span class="h-label">Music</span>
+      </div>
+      <div class="h-slot">
+        <div class="h-icon">📧</div>
+        <div class="h-dot"></div>
+        <span class="h-label">Mail</span>
+      </div>
+      <div class="h-slot">
+        <div class="h-icon">⚙️</div>
+        <div class="h-dot"></div>
+        <span class="h-label">Settings</span>
+      </div>
+      <div class="h-divider"></div>
+      <div class="h-folders">
+        <div class="h-folder">📁</div>
+        <div class="h-folder">📂</div>
+      </div>
+    </div>
+    <span class="hint">← hover</span>
+  </div>
+</div>
+
+<!-- 横表示: 状態比較 -->
+<div class="section">
+  <div class="section-header">
+    <h2>横表示: 状態比較</h2>
+  </div>
+  <p>非ホバー（くすみ）とホバー（鮮明+膨張）の比較。</p>
+  <div class="bar-stage">
+    <div class="state-compare">
+      <div class="state-box">
+        <div class="state-label">非ホバー（くすみ）</div>
+        <div class="h-bar frozen-idle">
+          <div class="h-slot">
+            <div class="h-icon">🌐</div>
+            <div class="h-dot active"></div>
+          </div>
+          <div class="h-slot">
+            <div class="h-icon">💬</div>
+            <div class="h-dot active"></div>
+          </div>
+          <div class="h-slot">
+            <div class="h-icon">📝</div>
+            <div class="h-dot active"></div>
+          </div>
+          <div class="h-slot">
+            <div class="h-icon">🎵</div>
+            <div class="h-dot"></div>
+          </div>
+          <div class="h-slot">
+            <div class="h-icon">📧</div>
+            <div class="h-dot"></div>
+          </div>
+          <div class="h-divider"></div>
+          <div class="h-folders">
+            <div class="h-folder">📁</div>
+            <div class="h-folder">📂</div>
+          </div>
+        </div>
+      </div>
+      <div class="state-box">
+        <div class="state-label">ホバー（鮮明+膨張）</div>
+        <div class="h-bar frozen-active">
+          <div class="h-slot">
+            <div class="h-icon">🌐</div>
+            <div class="h-dot active"></div>
+          </div>
+          <div class="h-slot">
+            <div class="h-icon">💬</div>
+            <div class="h-dot active"></div>
+          </div>
+          <div class="h-slot">
+            <div class="h-icon">📝</div>
+            <div class="h-dot active"></div>
+          </div>
+          <div class="h-slot">
+            <div class="h-icon">🎵</div>
+            <div class="h-dot"></div>
+          </div>
+          <div class="h-slot">
+            <div class="h-icon">📧</div>
+            <div class="h-dot"></div>
+          </div>
+          <div class="h-divider"></div>
+          <div class="h-folders">
+            <div class="h-folder">📁</div>
+            <div class="h-folder">📂</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ -->
+<!-- 縦表示                            -->
+<!-- ══════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <h2>縦表示</h2>
+    <span class="badge">新規</span>
+  </div>
+  <p>同じガラス質感を縦に展開。ドットは右側に配置。ラベルはホバーで左にポップアップ。フォルダは横線セパレータで下に配置。</p>
+  <div class="side-by-side">
+    <div class="bar-stage vertical-stage">
+      <div class="v-bar">
+        <div class="v-slot">
+          <div class="v-icon">🌐</div>
+          <div class="v-dot active"></div>
+          <span class="v-label">Safari</span>
+        </div>
+        <div class="v-slot">
+          <div class="v-icon">💬</div>
+          <div class="v-dot active"></div>
+          <span class="v-label">Slack</span>
+        </div>
+        <div class="v-slot">
+          <div class="v-icon">📝</div>
+          <div class="v-dot active"></div>
+          <span class="v-label">Code</span>
+        </div>
+        <div class="v-slot">
+          <div class="v-icon">🎵</div>
+          <div class="v-dot"></div>
+          <span class="v-label">Music</span>
+        </div>
+        <div class="v-slot">
+          <div class="v-icon">📧</div>
+          <div class="v-dot"></div>
+          <span class="v-label">Mail</span>
+        </div>
+        <div class="v-slot">
+          <div class="v-icon">⚙️</div>
+          <div class="v-dot"></div>
+          <span class="v-label">Settings</span>
+        </div>
+        <div class="v-divider"></div>
+        <div class="v-folder">📁</div>
+        <div class="v-folder">📂</div>
+      </div>
+      <span class="hint">← hover</span>
+    </div>
+    <div class="bar-stage" style="flex:1; flex-direction: column; gap: 20px;">
+      <div style="color: #888; font-size: 13px; line-height: 1.8; max-width: 400px;">
+        <strong style="color: #ccc;">縦表示のポイント:</strong><br>
+        ・ガラスの光沢は左辺に（縦バーなので自然な光の向き）<br>
+        ・ドットはアイコン右側に配置（macOS Dock と同じ位置感覚）<br>
+        ・ラベルはホバー時に左にポップアップ（tooltip 風）<br>
+        ・ホバーで左方向に拡大（画面端に寄せるため）<br>
+        ・pill 形状とスプリング膨張は横と共通
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ -->
+<!-- グラデーション適用例               -->
+<!-- ══════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <h2>グラデーション適用例</h2>
+  </div>
+  <p>既存のグラデーション機能との組み合わせ。ボーダーにもグラデーションカラーが反映され、ネオングロー風に。</p>
+  <div class="bar-stage">
+    <div class="h-bar with-gradient">
+      <div class="gradient-overlay"></div>
+      <div class="h-slot">
+        <div class="h-icon">🌐</div>
+        <div class="h-dot active"></div>
+        <span class="h-label">Safari</span>
+      </div>
+      <div class="h-slot">
+        <div class="h-icon">💬</div>
+        <div class="h-dot active"></div>
+        <span class="h-label">Slack</span>
+      </div>
+      <div class="h-slot">
+        <div class="h-icon">📝</div>
+        <div class="h-dot active"></div>
+        <span class="h-label">Code</span>
+      </div>
+      <div class="h-slot">
+        <div class="h-icon">🎵</div>
+        <div class="h-dot"></div>
+        <span class="h-label">Music</span>
+      </div>
+      <div class="h-slot">
+        <div class="h-icon">📧</div>
+        <div class="h-dot"></div>
+        <span class="h-label">Mail</span>
+      </div>
+      <div class="h-divider"></div>
+      <div class="h-folders">
+        <div class="h-folder">📁</div>
+        <div class="h-folder">📂</div>
+      </div>
+    </div>
+    <span class="hint">← hover</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ -->
+<!-- 実装上の変更点                     -->
+<!-- ══════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <h2>実装で変わるポイント</h2>
+  </div>
+  <div style="color: #999; font-size: 13px; line-height: 2;">
+    <table style="width: 100%; border-collapse: collapse;">
+      <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+        <td style="padding: 8px 0; color: #aaa; width: 180px;">FloatingBarShape</td>
+        <td style="padding: 8px 0;">∩カーブ廃止 → RoundedRectangle(cornerRadius: 24) に統一</td>
+      </tr>
+      <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+        <td style="padding: 8px 0; color: #aaa;">背景レイヤー</td>
+        <td style="padding: 8px 0;">インナーシャドウ + 上辺ハイライトストローク追加</td>
+      </tr>
+      <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+        <td style="padding: 8px 0; color: #aaa;">レイアウト</td>
+        <td style="padding: 8px 0;">VStack(上段/下段) → HStack(apps | divider | folders) に変更</td>
+      </tr>
+      <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+        <td style="padding: 8px 0; color: #aaa;">ホバーアニメ</td>
+        <td style="padding: 8px 0;">padding を Spring で増減（膨張エフェクト）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+        <td style="padding: 8px 0; color: #aaa;">ラベル表示</td>
+        <td style="padding: 8px 0;">常時表示 → 個別ホバー時のみ表示に変更</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; color: #aaa;">新規: ドット</td>
+        <td style="padding: 8px 0;">AppItem にアクティブ状態を持たせ、ドット描画を追加</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<p class="note">各バーにマウスを乗せてホバー動作を確認してください</p>
+
+</body>
+</html>
