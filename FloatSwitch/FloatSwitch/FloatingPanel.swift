@@ -160,15 +160,11 @@ final class FloatingPanel: NSPanel {
                                min(preferredOriginY, visibleFrame.maxY - newSize.height))
             newOrigin = CGPoint(x: frame.origin.x, y: clampedY)
         } else {
-            // 横型: 右端を固定
+            // 横型: 右端を固定、y は常に保持（再配置は positionInitial のみ）
             let preferredOriginX = frame.maxX - newSize.width
             let newOriginX = max(visibleFrame.minX,
                                  min(preferredOriginX, visibleFrame.maxX - newSize.width))
-            // 高さが変わっていなければ y を保持（並び替え時の微妙なズレ防止）
-            let newY = abs(newSize.height - frame.height) > 0.5
-                ? max(frame.minY, visibleFrame.minY + edgeMargin)
-                : frame.origin.y
-            newOrigin = CGPoint(x: newOriginX, y: newY)
+            newOrigin = CGPoint(x: newOriginX, y: frame.origin.y)
         }
         // 小さなサイズ変化はアニメーションなし（ジャンプ防止）
         let sizeDiff = abs(frame.width - newSize.width) + abs(frame.height - newSize.height)

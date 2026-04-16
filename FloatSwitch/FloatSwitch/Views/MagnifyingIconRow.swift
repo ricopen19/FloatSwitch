@@ -223,7 +223,12 @@ struct MagnifyingIconRow: View {
                           !fromBundleID.isEmpty,
                           fromBundleID != bundleID else { return }
                     DispatchQueue.main.async {
-                        onReorder(fromBundleID, bundleID)
+                        // 並び替え時のレイアウトアニメーションを抑制
+                        var transaction = Transaction()
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) {
+                            onReorder(fromBundleID, bundleID)
+                        }
                     }
                 }
                 return true
@@ -238,6 +243,7 @@ struct MagnifyingIconRow: View {
                 .onTapGesture { onTap(item) }
             Text(item.name)
                 .font(.system(size: max(8, iconSize * 0.28)))
+                .foregroundStyle(.white)
                 .lineLimit(1)
                 .frame(width: itemFrameWidth)
                 .opacity(isItemHovered ? 1 : 0)
