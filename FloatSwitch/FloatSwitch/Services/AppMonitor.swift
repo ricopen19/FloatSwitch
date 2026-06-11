@@ -49,6 +49,7 @@ final class AppMonitor {
         ) { [weak self] notification in
             guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
                   app.activationPolicy != .prohibited else { return }
+            guard !(self?.apps.contains(where: { $0.id == "app-\(app.processIdentifier)" }) ?? false) else { return }
             self?.apps.append(AppItem(app: app))
         }
 
